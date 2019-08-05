@@ -1,3 +1,6 @@
+const MANTISSA_MASK = 0x000fffffffffffff
+const EXP_MASK = 0x00000000000007ff
+
 uint(x::Float16) = Core.bitcast(UInt16, x)
 uint(x::Float32) = Core.bitcast(UInt32, x)
 uint(x::Float64) = Core.bitcast(UInt64, x)
@@ -14,15 +17,15 @@ bias(::Type{Float16}) = 15
 bias(::Type{Float32}) = 127
 bias(::Type{Float64}) = 1023
 
-pow5_bitcount(::Type{Float16}) = 30 # ??
+pow5_bitcount(::Type{Float16}) = 30
 pow5_bitcount(::Type{Float32}) = 61
 pow5_bitcount(::Type{Float64}) = 121
 
-pow5_inv_bitcount(::Type{Float16}) = 30 # ??
+pow5_inv_bitcount(::Type{Float16}) = 30
 pow5_inv_bitcount(::Type{Float32}) = 59
 pow5_inv_bitcount(::Type{Float64}) = 122
 
-qinvbound(::Type{Float16}) = 4 # or 3
+qinvbound(::Type{Float16}) = 4
 qinvbound(::Type{Float32}) = 9
 qinvbound(::Type{Float64}) = 21
 
