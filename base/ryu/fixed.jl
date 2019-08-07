@@ -1,4 +1,4 @@
-@inline function writefixed(v::T, precision, buf, pos) where {T <: Base.IEEEFloat}
+@inline function writefixed(v::T, precision, buf, pos, trimtrailingzeros=false) where {T <: Base.IEEEFloat}
     x = Float64(v)
     neg = signbit(x)
     # special cases
@@ -167,6 +167,14 @@
     else
         for _ = 1:precision
             buf[pos] = UInt8('0')
+            pos += 1
+        end
+    end
+    if trimtrailingzeros
+        while buf[pos - 1] == UInt8('0')
+            pos -= 1
+        end
+        if buf[pos - 1] == UInt8('.')
             pos += 1
         end
     end

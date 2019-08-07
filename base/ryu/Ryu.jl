@@ -15,9 +15,9 @@ function writeshortest(x::T) where {T <: Base.IEEEFloat}
     return unsafe_string(pointer(buf), pos-1)
 end
 
-function writefixed(x::T, precision) where {T <: Base.IEEEFloat}
+function writefixed(x::T, precision, trim=false) where {T <: Base.IEEEFloat}
     buf = Vector{UInt8}(undef, precision + shortestdigits(T))
-    pos = writefixed(x, precision, buf, 1)
+    pos = writefixed(x, precision, buf, 1, trim)
     return unsafe_string(pointer(buf), pos-1)
 end
 
@@ -31,7 +31,7 @@ function Base.show(io::IO, x::T) where {T <: Base.IEEEFloat}
     if get(io, :compact, false)
         precision = T == Float16 ? 5 : 6
         buf = Vector{UInt8}(undef, precision + shortestdigits(T))
-        pos = writefixed(x, precision, buf, 1)
+        pos = writefixed(x, precision, buf, 1, true)
         GC.@preserve buf unsafe_write(io, pointer(buf), pos - 1)
     else
         buf = Vector{UInt8}(undef, shortestdigits(T))
