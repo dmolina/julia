@@ -1,6 +1,9 @@
 const MANTISSA_MASK = 0x000fffffffffffff
 const EXP_MASK = 0x00000000000007ff
 
+memcpy(d, doff, s, soff, n) = ccall(:memcpy, Cvoid, (Ptr{UInt8}, Ptr{UInt8}, Int), d + doff - 1, s + soff - 1, n)
+memmove(d, doff, s, soff, n) = ccall(:memmove, Cvoid, (Ptr{UInt8}, Ptr{UInt8}, Int), d + doff - 1, s + soff - 1, n)
+
 uint(x::Float16) = Core.bitcast(UInt16, x)
 uint(x::Float32) = Core.bitcast(UInt32, x)
 uint(x::Float64) = Core.bitcast(UInt64, x)
@@ -36,9 +39,9 @@ qbound(::Type{Float64}) = 63
 log10pow2(e) = (e * 78913) >> 18
 log10pow5(e) = (e * 732923) >> 20
 pow5bits(e) = ((e * 1217359) >> 19) + 1
-mulshift(m::UInt64, mula, mulb, j) = ((((UInt128(m) * mula) >> 64) + UInt128(m) * mulb) >> (j - 64)) % UInt64
-mulshift(m::UInt32, mul, j) = ((((UInt64(m) * (mul % UInt32)) >> 32) + (UInt64(m) * (mul >> 32))) >> (j - 32)) % UInt32
-mulshift(m::UInt16, mul, j) = ((((UInt32(m) * (mul % UInt16)) >> 16) + (UInt32(m) * (mul >> 16))) >> (j - 16))
+@inline mulshift(m::UInt64, mula, mulb, j) = ((((UInt128(m) * mula) >> 64) + UInt128(m) * mulb) >> (j - 64)) % UInt64
+@inline mulshift(m::UInt32, mul, j) = ((((UInt64(m) * (mul % UInt32)) >> 32) + (UInt64(m) * (mul >> 32))) >> (j - 32)) % UInt32
+@inline mulshift(m::UInt16, mul, j) = ((((UInt32(m) * (mul % UInt16)) >> 16) + (UInt32(m) * (mul >> 16))) >> (j - 16))
 indexforexp(e) = div(e + 15, 16)
 pow10bitsforindex(idx) = 16 * idx + 120
 lengthforindex(idx) = div((((16 * idx) * 1292913986) >> 32) + 1 + 16 + 8, 9)
@@ -284,7 +287,7 @@ const BIG_MASK = (big(1) << 64) - 1
 
 const POW10_SPLIT = collect(Iterators.flatten(map(0:63) do idx
     pow10bits = pow10bitsforindex(idx)
-    map(0:lengthforindex(idx)-1) do i
+    map(0:lengthforindex(idx) - 1) do i
         v = (div(big(1) << pow10bits, big(10)^(9 * i)) + 1) % ((big(10)^9) << 136)
         return (UInt64(v & BIG_MASK), UInt64((v >> 64) & BIG_MASK), UInt64((v >> 128) & BIG_MASK))
     end
@@ -325,7 +328,7 @@ bitlength(this) = Base.GMP.MPZ.sizeinbase(this, 2)
 @inline function pow5invsplit(::Type{Float64}, i)
     pow = big(5)^i
     inv = div(big(1) << (bitlength(pow) - 1 + pow5_inv_bitcount(Float64)), pow) + 1
-    return (inv & ((big(1) << 64) - 1), inv >> 64)
+    return (UInt64(inv & ((big(1) << 64) - 1)), UInt64(inv >> 64))
 end
 
 @inline function pow5invsplit(::Type{Float32}, i)
@@ -343,7 +346,7 @@ end
 @inline function pow5split(::Type{Float64}, i)
     pow = big(5)^i
     j = bitlength(pow) - pow5_bitcount(Float64)
-    return ((pow >> j) & ((big(1) << 64) - 1), pow >> (j + 64))
+    return (UInt64((pow >> j) & ((big(1) << 64) - 1)), UInt64(pow >> (j + 64)))
 end
 
 @inline function pow5split(::Type{Float32}, i)

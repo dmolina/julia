@@ -17,12 +17,12 @@
                 pos += 1
             end
         end
-        return buf, pos
+        return pos
     elseif isnan(x)
         buf[pos] = UInt8('N')
         buf[pos + 1] = UInt8('a')
         buf[pos + 2] = UInt8('N')
-        return buf, pos + 3
+        return pos + 3
     elseif !isfinite(x)
         if neg
             buf[pos] = UInt8('-')
@@ -30,7 +30,7 @@
         buf[pos + neg] = UInt8('I')
         buf[pos + neg + 1] = UInt8('n')
         buf[pos + neg + 2] = UInt8('f')
-        return buf, pos + neg + 3
+        return pos + neg + 3
     end
 
     bits = Core.bitcast(UInt64, x)
@@ -170,5 +170,5 @@
             pos += 1
         end
     end
-    return buf, pos
+    return pos
 end

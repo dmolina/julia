@@ -2,11 +2,22 @@
 
 module Printf
 using .Base.Grisu
+using .Base.Ryu
 using .Base.GMP
 
 ### printf formatter generation ###
 const SmallFloatingPoint = Union{Float64,Float32,Float16}
 const SmallNumber = Union{SmallFloatingPoint,Base.BitInteger}
+
+function getbuf()
+    tls = task_local_storage()
+    d = get(tls, :DIGITS, nothing)
+    if d === nothing
+        d = Vector{UInt8}(undef, 309+17)
+        tls[:DIGITS] = d
+    end
+    return d::Vector{UInt8}
+end
 
 function gen(s::AbstractString)
     args = []
@@ -26,7 +37,7 @@ function gen(s::AbstractString)
                 c=='p' ? gen_p :
                          gen_d
             if !gotbuf && c != 'c' && c != 's' && c != 'p'
-                push!(blk.args, :(buf = $Grisu.getbuf()))
+                push!(blk.args, :(buf = $(getbuf())))
                 gotbuf = true
             end
             arg, ex = f(x...)
@@ -217,7 +228,7 @@ function print_fixed_width(precision, pt, ndigits, trailingzeros=true)
 end
 
 # note: if print_fixed is changed, print_fixed_width should be changed accordingly
-function print_fixed(out, precision, pt, ndigits, trailingzeros=true, buf = Grisu.getbuf())
+function print_fixed(out, precision, pt, ndigits, trailingzeros=true, buf = getbuf())
     pdigits = pointer(buf)
     if pt <= 0
         # 0.0dddd0
@@ -443,7 +454,7 @@ function gen_e(flags::String, width::Int, precision::Int, c::Char, inside_g::Boo
     end
     # interpret the number
     if precision < 0; precision = 6; end
-    ndigits = min(precision+1,length(Grisu.getbuf())-1)
+    ndigits = min(precision+1,length(getbuf())-1)
     push!(blk.args, :((do_out, args) = ini_dec(out,$x,$ndigits, $flags, $width, $precision, $c, buf)))
     push!(blk.args, :(digits = buf))
     ifblk = Expr(:if, :do_out, Expr(:block))
@@ -559,7 +570,7 @@ function gen_a(flags::String, width::Int, precision::Int, c::Char)
     if precision < 0
         push!(blk.args, :((do_out, args) = $fn(out,$x, $flags, $width, $precision, $c, buf)))
     else
-        ndigits = min(precision+1,length(Grisu.getbuf())-1)
+        ndigits = min(precision+1,length(getbuf())-1)
         push!(blk.args, :((do_out, args) = $fn(out,$x,$ndigits, $flags, $width, $precision, $c, buf)))
     end
     push!(blk.args, :(digits = buf))
@@ -755,7 +766,7 @@ function gen_g(flags::String, width::Int, precision::Int, c::Char)
     #
     x, ex, blk = special_handler(flags,width)
     if precision < 0; precision = 6; end
-    ndigits = min(precision+1,length(Grisu.getbuf())-1)
+    ndigits = min(precision+1,length(getbuf())-1)
     # See if anyone else wants to handle it
     push!(blk.args, :((do_out, args) = ini_dec(out,$x,$ndigits, $flags, $width, $precision, $c, buf)))
     ifblk = Expr(:if, :do_out, Expr(:block))

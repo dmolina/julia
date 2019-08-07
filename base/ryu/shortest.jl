@@ -6,14 +6,14 @@
             buf[pos] = UInt8('-')
         end
         buf[pos + neg] = UInt8('0')
-        buf[pos + neg + 1] = UInt8('e')
+        buf[pos + neg + 1] = UInt8('.')
         buf[pos + neg + 2] = UInt8('0')
-        return buf, pos + neg + 3
+        return pos + neg + 3
     elseif isnan(x)
         buf[pos] = UInt8('N')
         buf[pos + 1] = UInt8('a')
         buf[pos + 2] = UInt8('N')
-        return buf, pos + 3
+        return pos + 3
     elseif !isfinite(x)
         if neg
             buf[pos] = UInt8('-')
@@ -21,7 +21,7 @@
         buf[pos + neg] = UInt8('I')
         buf[pos + neg + 1] = UInt8('n')
         buf[pos + neg + 2] = UInt8('f')
-        return buf, pos + neg + 3
+        return pos + neg + 3
     end
 
     bits = uint(x)
@@ -176,77 +176,115 @@
     end
     olength = decimallength(output)
 
+    exp_form = true
+    pt = nexp + olength
+    if -4 < pt < 6 && !(pt >= olength && abs(mod(x + 0.05, 10^(pt - olength)) - 0.05) > 0.05)
+        exp_form = false
+        # print out digits and decimal point fully
+        if nexp >= 0
+            buf[pos + nexp + olength] = UInt8('.')
+            buf[pos + nexp + olength + 1] = UInt8('0')
+        elseif abs(nexp) >= olength
+            buf[pos] = UInt8('0')
+            buf[pos + 1] = UInt8('.')
+            pos += 2
+            for _ = 1:(abs(nexp) - olength)
+                buf[pos] = UInt8('0')
+                pos += 1
+            end
+        end
+    else
+        pos += 1
+    end
     i = 0
+    ptr = pointer(buf)
+    ptr2 = pointer(DIGIT_TABLE)
     if (output >> 32) != 0
         q = output ÷ 100000000
         output2 = (output % UInt32) - UInt32(100000000) * (q % UInt32)
         output = q
 
-        c = output2 % 10000
-        output2 = div(output2, 10000)
-        d = output2 % 10000
+        c = output2 % UInt32(10000)
+        output2 = div(output2, UInt32(10000))
+        d = output2 % UInt32(10000)
         c0 = (c % 100) << 1
         c1 = (c ÷ 100) << 1
         d0 = (d % 100) << 1
         d1 = (d ÷ 100) << 1
-        unsafe_copyto!(buf, pos + olength - 1, DIGIT_TABLE, c0 + 1, 2)
-        unsafe_copyto!(buf, pos + olength - 3, DIGIT_TABLE, c1 + 1, 2)
-        unsafe_copyto!(buf, pos + olength - 5, DIGIT_TABLE, d0 + 1, 2)
-        unsafe_copyto!(buf, pos + olength - 7, DIGIT_TABLE, d1 + 1, 2)
+        memcpy(ptr, pos + olength - 2, ptr2, c0 + 1, 2)
+        memcpy(ptr, pos + olength - 4, ptr2, c1 + 1, 2)
+        memcpy(ptr, pos + olength - 6, ptr2, d0 + 1, 2)
+        memcpy(ptr, pos + olength - 8, ptr2, d1 + 1, 2)
         i += 8
     end
     output2 = output % UInt32
     while output2 >= 10000
-        c = output2 % 10000
-        output2 = div(output2, 10000)
+        c = output2 % UInt32(10000)
+        output2 = div(output2, UInt32(10000))
         c0 = (c % 100) << 1
         c1 = (c ÷ 100) << 1
-        unsafe_copyto!(buf, pos + olength - i - 1, DIGIT_TABLE, c0 + 1, 2)
-        unsafe_copyto!(buf, pos + olength - i - 3, DIGIT_TABLE, c1 + 1, 2)
+        memcpy(ptr, pos + olength - i - 2, ptr2, c0 + 1, 2)
+        memcpy(ptr, pos + olength - i - 4, ptr2, c1 + 1, 2)
         i += 4
     end
     if output2 >= 100
-        c = (output2 % 100) << 1
-        output2 = div(output2, 100)
-        unsafe_copyto!(buf, pos + olength - i - 1, DIGIT_TABLE, c + 1, 2)
+        c = (output2 % UInt32(100)) << 1
+        output2 = div(output2, UInt32(100))
+        memcpy(ptr, pos + olength - i - 2, ptr2, c + 1, 2)
         i += 2
     end
     if output2 >= 10
         c = output2 << 1
-        #=@inbounds=# buf[pos + olength - i] = DIGIT_TABLE[c + 2]
-        #=@inbounds=# buf[pos] = DIGIT_TABLE[c + 1]
+        #=@inbounds=# buf[pos + 1] = DIGIT_TABLE[c + 2]
+        #=@inbounds=# buf[pos - exp_form] = DIGIT_TABLE[c + 1]
     else
-        #=@inbounds=# buf[pos] = UInt8('0') + (output2 % UInt8)
+        #=@inbounds=# buf[pos - exp_form] = UInt8('0') + (output2 % UInt8)
     end
 
-    if olength > 1
-        #=@inbounds=# buf[pos + 1] = UInt8('.')
-        pos += olength + 1
+    if !exp_form
+        if nexp >= 0
+            pos += olength
+            for _ = 1:nexp
+                buf[pos] = UInt8('0')
+                pos += 1
+            end
+            pos += 2
+        elseif olength > abs(nexp)
+            pointoff = olength - abs(nexp)
+            memmove(ptr, pos + pointoff + 1, ptr, pos + pointoff, olength - pointoff + 1)
+            buf[pos + pointoff] = UInt8('.')
+            pos += olength + 1
+        else
+            pos += olength
+        end
     else
+        if olength > 1
+            #=@inbounds=# buf[pos] = UInt8('.')
+            pos += olength
+        end
+
+        #=@inbounds=# buf[pos] = UInt8('e')
         pos += 1
+        exp2 = nexp + olength - 1
+        if exp2 < 0
+            #=@inbounds=# buf[pos] = UInt8('-')
+            pos += 1
+            exp2 = -exp2
+        end
+
+        if exp2 >= 100
+            c = exp2 % 10
+            memcpy(ptr, pos, ptr2, 2 * div(exp2, 10) + 1, 2)
+            #=@inbounds=# buf[pos + 2] = UInt8('0') + (c % UInt8)
+            pos += 3
+        elseif exp2 >= 10
+            memcpy(ptr, pos, ptr2, 2 * exp2 + 1, 2)
+            pos += 2
+        else
+            #=@inbounds=# buf[pos] = UInt8('0') + (exp2 % UInt8)
+            pos += 1
+        end
     end
 
-    #=@inbounds=# buf[pos] = UInt8('e')
-    pos += 1
-    exp2 = nexp + olength - 1
-    if exp2 < 0
-        #=@inbounds=# buf[pos] = UInt8('-')
-        pos += 1
-        exp2 = -exp2
-    end
-
-    if exp2 >= 100
-        c = exp2 % 10
-        unsafe_copyto!(buf, pos, DIGIT_TABLE, 2 * div(exp2, 10) + 1, 2)
-        #=@inbounds=# buf[pos + 2] = UInt8('0') + (c % UInt8)
-        pos += 3
-    elseif exp2 >= 10
-        unsafe_copyto!(buf, pos, DIGIT_TABLE, 2 * exp2 + 1, 2)
-        pos += 2
-    else
-        #=@inbounds=# buf[pos] = UInt8('0') + (exp2 % UInt8)
-        pos += 1
-    end
-
-    return buf, pos
+    return pos
 end

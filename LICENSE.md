@@ -39,7 +39,6 @@ Julia includes code from the following projects, which have their own licenses:
 
 The following components included in Julia `Base` have their own separate licenses:
 
-- base/grisu/* [BSD-3] (see [double-conversion](https://github.com/google/double-conversion/blob/master/LICENSE))
 - base/special/{exp,rem_pio2,hyperbolic}.jl [Freely distributable with preserved copyright notice] (see [FDLIBM](https://www.netlib.org/fdlibm))
 
 The Julia language links to the following external libraries, which have their
