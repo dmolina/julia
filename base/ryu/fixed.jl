@@ -12,6 +12,9 @@
         if precision > 0
             buf[pos] = UInt8('.')
             pos += 1
+            if trimtrailingzeros
+                precision = 1
+            end
             for _ = 1:precision
                 buf[pos] = UInt8('0')
                 pos += 1
