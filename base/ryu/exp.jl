@@ -98,9 +98,12 @@
         while i < 200
             j = 120 + (-e2 - 16 * idx)
             p = POW10_OFFSET_2[idx + 1] + i - MIN_BLOCK_2[idx + 1]
-            # @show i, p, pos
-            #=@inbounds=# mula, mulb, mulc = POW10_SPLIT_2[p + 1]
-            digits = p >= POW10_OFFSET_2[idx + 2] ? 0 : mulshiftmod1e9(m2 << 8, mula, mulb, mulc, j + 8)
+            if p >= POW10_OFFSET_2[idx + 2]
+                digits = 0
+            else
+                #=@inbounds=# mula, mulb, mulc = POW10_SPLIT_2[p + 1]
+                digits = mulshiftmod1e9(m2 << 8, mula, mulb, mulc, j + 8)
+            end
             if printedDigits != 0
                 if printedDigits + 9 > precision
                     availableDigits = 9
