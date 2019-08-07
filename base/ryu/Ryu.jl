@@ -29,7 +29,7 @@ end
 
 function Base.show(io::IO, x::T) where {T <: Base.IEEEFloat}
     if get(io, :compact, false)
-        x = round(x, sigdigits=5)
+        x = round(x, sigdigits=6)
     end
     buf = Vector{UInt8}(undef, shortestdigits(T))
     pos = writeshortest(x, buf, 1)
