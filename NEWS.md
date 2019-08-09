@@ -54,6 +54,7 @@ Standard library changes
 * `mod` now accepts a unit range as the second argument to easily perform offset modular arithmetic to ensure the result is inside the range ([#32628]).
 * `Sockets.recvfrom` now returns both host and port as an InetAddr ([#32729]).
 * `nothing` can now be `print`ed, and interplated into strings etc. as the string `"nothing"`. It is still not permitted to be interplated into Cmds (i.e. ``echo `$(nothing)` `` will still error without running anything.) ([#32148])
+* `mktemp` and `mktempdir` now try to remove temporary paths they create by default before the process exits ([#32851]).
 
 #### Libdl
 
