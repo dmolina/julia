@@ -17,13 +17,13 @@ end
 
 function writefixed(x::T, precision) where {T <: Base.IEEEFloat}
     buf = Vector{UInt8}(undef, precision + shortestdigits(T))
-    pos = writefixed(x, precision, buf, 1)
+    pos = writefixed(buf, 1, x, false, false, false, precision)
     return unsafe_string(pointer(buf), pos-1)
 end
 
 function writeexp(x::T, precision) where {T <: Base.IEEEFloat}
     buf = Vector{UInt8}(undef, precision + shortestdigits(T))
-    pos = writeexp(x, precision, buf, 1)
+    pos = writeexp(buf, 1, x, false, false, false, precision)
     return unsafe_string(pointer(buf), pos-1)
 end
 

@@ -1,4 +1,6 @@
-@inline function writefixed(v::T, precision, buf, pos, trimtrailingzeros=false) where {T <: Base.IEEEFloat}
+@inline function writefixed(buf, pos, v::T,
+    plus=false, space=false, hash=false,
+    precision=-1, decchar=UInt8('.'), trimtrailingzeros=false) where {T <: Base.IEEEFloat}
     x = Float64(v)
     neg = signbit(x)
     # special cases
@@ -6,11 +8,17 @@
         if neg
             buf[pos] = UInt8('-')
             pos += 1
+        elseif plus
+            buf[pos] = UInt8('+')
+            pos += 1
+        elseif space
+            buf[pos] = UInt8(' ')
+            pos += 1
         end
         buf[pos] = UInt8('0')
         pos += 1
         if precision > 0
-            buf[pos] = UInt8('.')
+            buf[pos] = decchar
             pos += 1
             if trimtrailingzeros
                 precision = 1
@@ -19,6 +27,9 @@
                 buf[pos] = UInt8('0')
                 pos += 1
             end
+        elseif hash
+            buf[pos] = decchar
+            pos += 1
         end
         return pos
     elseif isnan(x)
@@ -29,11 +40,18 @@
     elseif !isfinite(x)
         if neg
             buf[pos] = UInt8('-')
+            pos += 1
+        elseif plus
+            buf[pos] = UInt8('+')
+            pos += 1
+        elseif space
+            buf[pos] = UInt8(' ')
+            pos += 1
         end
-        buf[pos + neg] = UInt8('I')
-        buf[pos + neg + 1] = UInt8('n')
-        buf[pos + neg + 2] = UInt8('f')
-        return pos + neg + 3
+        buf[pos] = UInt8('I')
+        buf[pos + 1] = UInt8('n')
+        buf[pos + 2] = UInt8('f')
+        return pos + 3
     end
 
     bits = Core.bitcast(UInt64, x)
@@ -50,6 +68,12 @@
     nonzero = false
     if neg
         buf[pos] = UInt8('-')
+        pos += 1
+    elseif plus
+        buf[pos] = UInt8('+')
+        pos += 1
+    elseif space
+        buf[pos] = UInt8(' ')
         pos += 1
     end
     if e2 >= -52
@@ -75,8 +99,8 @@
         buf[pos] = UInt8('0')
         pos += 1
     end
-    if precision > 0
-        buf[pos] = UInt8('.')
+    if precision > 0 || hash
+        buf[pos] = decchar
         pos += 1
     end
     if e2 < 0
@@ -144,14 +168,14 @@
                     buf[roundPos + 1] = UInt8('1')
                     if dotPos > 1
                         buf[dotPos] = UInt8('0')
-                        buf[dotPos + 1] = UInt8('.')
+                        buf[dotPos + 1] = decchar
                     end
                     buf[pos] = UInt8('0')
                     pos += 1
                     break
                 end
                 c = roundPos > 0 ? buf[roundPos] : 0x00
-                if c == UInt8('.')
+                if c == decchar
                     dotPos = roundPos
                     continue
                 elseif c == UInt8('9')
@@ -177,7 +201,7 @@
         while buf[pos - 1] == UInt8('0')
             pos -= 1
         end
-        if buf[pos - 1] == UInt8('.')
+        if buf[pos - 1] == decchar
             pos += 1
         end
     end
