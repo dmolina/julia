@@ -4,7 +4,7 @@ module Printf
 
 using .Base.Ryu
 
-export @printf, @sprintf
+export @printf, @sprintf, Format, format, @format
 
 const Ints = Union{Val{'d'}, Val{'i'}, Val{'u'}, Val{'x'}, Val{'X'}, Val{'o'}}
 const Floats = Union{Val{'e'}, Val{'E'}, Val{'f'}, Val{'F'}, Val{'g'}, Val{'G'}, Val{'a'}, Val{'A'}}
@@ -118,7 +118,7 @@ function Format(f::AbstractString)
             pos += 1
         end
         # parse type
-        !(b in b"diouxXDOUeEfFgGaAcCsSpn") && throw(ArgumentError("invalid format string: '$f'"))
+        !(b in b"diouxXDOUeEfFgGaAcCsSpn") && throw(ArgumentError("invalid format string: '$f', invalid type specifier: '$(Char(b))'"))
         type = Val{Char(b)}
         if type <: Ints && precision > 0
             zero = false
@@ -428,17 +428,17 @@ macro printf(io_or_fmt, fmt_or_first_arg, args...)
     if io_or_fmt isa String
         io = stdout
         fmt = Format(io_or_fmt)
-        return esc(:(Printf.format($io, $fmt, $fmt_or_first_arg, $(args...))))
+        return esc(:(Base.Printf.format($io, $fmt, $fmt_or_first_arg, $(args...))))
     else
         io = io_or_fmt
         fmt = Format(fmt_or_first_arg)
-        return esc(:(Printf.format($io, $fmt, $(args...))))
+        return esc(:(Base.Printf.format($io, $fmt, $(args...))))
     end
 end
 
 macro sprintf(fmt, args...)
     f = Format(fmt)
-    return esc(:(Printf.format($f, $(args...))))
+    return esc(:(Base.Printf.format($f, $(args...))))
 end
 
 end # module
