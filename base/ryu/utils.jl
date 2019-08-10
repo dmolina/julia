@@ -214,7 +214,7 @@ end
     return pos + i
 end
 
-@inline function append_d_digits(olength, digits, buf, pos)
+@inline function append_d_digits(olength, digits, buf, pos, decchar)
     i = 0
     while digits >= 10000
         c = digits % 10000
@@ -234,12 +234,12 @@ end
     if digits >= 10
         c = digits << 1
         buf[pos] = DIGIT_TABLE[c + 1]
-        buf[pos + 1] = UInt8('.')
+        buf[pos + 1] = decchar
         buf[pos + 2] = DIGIT_TABLE[c + 2]
         i += 3
     else
         buf[pos] = UInt8('0') + digits
-        buf[pos + 1] = UInt8('.')
+        buf[pos + 1] = decchar
         i += 2
     end
     return pos + i
@@ -287,7 +287,7 @@ const BIG_MASK = (big(1) << 64) - 1
 
 const POW10_SPLIT = collect(Iterators.flatten(map(0:63) do idx
     pow10bits = pow10bitsforindex(idx)
-    map(0:lengthforindex(idx) - 1) do i
+    map(0:lengthforindex(idx)-1) do i
         v = (div(big(1) << pow10bits, big(10)^(9 * i)) + 1) % ((big(10)^9) << 136)
         return (UInt64(v & BIG_MASK), UInt64((v >> 64) & BIG_MASK), UInt64((v >> 128) & BIG_MASK))
     end
